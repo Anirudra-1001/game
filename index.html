@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Platformer Game</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    background: #87ceeb;
+}
+#start-screen, #game-over {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: #87ceeb;
+}
+#game-area {
+    width: 90%;
+    max-width: 600px;
+    height: 400px;
+    margin: 20px auto;
+    background: #90ee90;
+    border: 2px solid #333;
+    position: relative;
+    overflow: hidden;
+}
+#player {
+    width: 40px;
+    height: 40px;
+    background: #ff5733;
+    position: absolute;
+    bottom: 0;
+    left: 50px;
+    border-radius: 5px;
+}
+.platform {
+    width: 100px;
+    height: 10px;
+    background: #8b4513;
+    position: absolute;
+}
+button {
+    padding: 15px 30px;
+    font-size: 20px;
+    margin: 5px;
+    border: none;
+    border-radius: 10px;
+    background: #ff5733;
+    color: white;
+    cursor: pointer;
+}
+#mobile-controls {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+}
+#mobile-controls button {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+}
+</style>
+</head>
+<body>
+
+<!-- Start Screen -->
+<div id="start-screen">
+    <h1>Mini Platformer Game</h1>
+    <button id="start-btn">Start Game</button>
+</div>
+
+<!-- Game Container -->
+<div id="game-container" style="display:none;">
+    <p>Score: <span id="score">0</span> | Time: <span id="timer">30</span>s</p>
+    <div id="game-area">
+        <div id="player"></div>
+    </div>
+    <p>Use ← → arrows to move, ↑ to jump</p>
+    <div id="mobile-controls">
+        <button id="left-btn">◀</button>
+        <button id="jump-btn">▲</button>
+        <button id="right-btn">▶</button>
+    </div>
+</div>
+
+<!-- Game Over Screen -->
+<div id="game-over" style="display:none;">
+    <h1>You Are Out!</h1>
+    <p>Your Score: <span id="final-score">0</span></p>
+    <button id="play-again">Play Again</button>
+</div>
+
+<script>
+let startScreen = document.getElementById('start-screen');
+let startBtn = document.getElementById('start-btn');
+let gameContainer = document.getElementById('game-container');
+let gameArea = document.getElementById('game-area');
+let player = document.getElementById('player');
+let scoreSpan = document.getElementById('score');
+let timerSpan = document.getElementById('timer');
+let gameOverScreen = document.getElementById('game-over');
+let finalScore = document.getElementById('final-score');
+let playAgainBtn = document.getElementById('play-again');
+
+// Mobile controls
+let leftBtn = document.getElementById('left-btn');
+let rightBtn = document.getElementById('right-btn');
+let jumpBtn = document.getElementById('jump-btn');
+
+let playerBottom = 0;
+let playerLeft = 50;
+let isJumping = false;
+let gravity = 3;
+let score = 0;
+let timeLeft = 30;
+let gameInterval;
+let timerInterval;
+
+// Platforms
+let platforms = [
+    {left:0,bottom:0,width:600},
+    {left:150,bottom:80,width:100},
+    {left:300,bottom:150,width:100},
+    {left:450,bottom:220,width:100}
+];
+
+function drawPlatforms() {
+    gameArea.innerHTML = '<div id="player"></div>';
+    platforms.forEach(p=>{
+        let plat = document.createElement('div');
+        plat.classList.add('platform');
+        plat.style.left=p.left+'px';
+        plat.style.bottom=p.bottom+'px';
+        plat.style.width=p.width+'px';
+        gameArea.appendChild(plat);
+    });
+    player = document.getElementById('player');
+    player.style.bottom = playerBottom + 'px';
+    player.style.left = playerLeft + 'px';
+}
+
+function resetGame(){
+    playerBottom=0;
+    playerLeft=50;
+    isJumping=false;
+    score=0;
+    timeLeft=30;
+    scoreSpan.textContent=score;
+    timerSpan.textContent=timeLeft;
+    drawPlatforms();
+    startTimer();
+}
+
+// Start game
+startBtn.addEventListener('click', ()=>{
+    startScreen.style.display='none';
+    gameContainer.style.display='block';
+    resetGame();
+});
+
+// Play again
+playAgainBtn.addEventListener('click', ()=>{
+    gameOverScreen.style.display='none';
+    gameContainer.style.display='block';
+    resetGame();
+});
+
+// Timer
+function startTimer(){
+    clearInterval(timerInterval);
+    clearInterval(gameInterval);
+    timerInterval=setInterval(()=>{
+        timeLeft--;
+        timerSpan.textContent=timeLeft;
+        if(timeLeft<=0) endGame();
+    },1000);
+    gameInterval=setInterval(()=>{
+        score++;
+        scoreSpan.textContent=score;
+    },200);
+}
+
+// Keyboard controls
+document.addEventListener('keydown', e=>{
+    if(e.key==='ArrowLeft') moveLeft();
+    if(e.key==='ArrowRight') moveRight();
+    if(e.key==='ArrowUp') jump();
+});
+
+function moveLeft(){
+    if(playerLeft>0) playerLeft-=20;
+    player.style.left=playerLeft+'px';
+}
+function moveRight(){
+    if(playerLeft<gameArea.clientWidth-40) playerLeft+=20;
+    player.style.left=playerLeft+'px';
+}
+
+// Mobile touch controls
+leftBtn.addEventListener('touchstart', moveLeft);
+rightBtn.addEventListener('touchstart', moveRight);
+jumpBtn.addEventListener('touchstart', jump);
+
+// Jump
+function jump(){
+    if(isJumping) return;
+    isJumping=true;
+    let jumpCount=0;
+    const jumpInterval=setInterval(()=>{
+        if(jumpCount<15) playerBottom+=6;
+        else{
+            clearInterval(jumpInterval);
+            fall();
+        }
+        player.style.bottom=playerBottom+'px';
+        jumpCount++;
+    },20);
+}
+
+// Fall
+function fall(){
+    const fallInterval=setInterval(()=>{
+        if(playerBottom>0){
+            playerBottom-=gravity;
+            platforms.forEach(p=>{
+                if(playerLeft+40>p.left && playerLeft<p.left+p.width &&
+                   playerBottom<=p.bottom+5 && playerBottom>=p.bottom-5)
+                   playerBottom=p.bottom;
+            });
+        }
+        player.style.bottom=playerBottom+'px';
+        if(playerBottom<=0) clearInterval(fallInterval);
+    },20);
+}
+
+// End game
+function endGame(){
+    clearInterval(timerInterval);
+    clearInterval(gameInterval);
+    gameContainer.style.display='none';
+    finalScore.textContent=score;
+    gameOverScreen.style.display='flex';
+}
+</script>
+</body>
+</html>
